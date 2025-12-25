@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>教案資料庫總覽系統</title>
+    <title>教案影片資料庫 - 數位管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
+        /* 影片比例容器 */
         .video-container {
             position: relative;
-            padding-bottom: 56.25%;
+            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
             height: 0;
             overflow: hidden;
             border-radius: 0.75rem;
+            background-color: #000;
         }
         .video-container iframe {
             position: absolute;
@@ -21,142 +23,271 @@
             width: 100%;
             height: 100%;
         }
-        .glass-morphism {
-            background: rgba(255, 255, 255, 0.9);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        /* 毛玻璃效果導航 */
+        .glass-header {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        /* 卡片懸停動畫 */
+        .lesson-card {
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s ease;
+        }
+        .lesson-card:hover {
+            transform: translateY(-5px);
+        }
+        /* 背景音樂控制按鈕 */
+        .music-control {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 100;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
         }
     </style>
 </head>
 <body class="bg-slate-50 min-h-screen font-sans text-slate-900">
 
-    <!-- 導航欄 -->
-    <nav class="sticky top-0 z-50 glass-morphism shadow-sm mb-8">
+    <!-- 背景音樂隱藏播放器 (從 0 秒開始播放) -->
+    <div id="bg-music-player" class="hidden">
+        <iframe 
+            id="youtube-bg-player"
+            src="https://www.youtube.com/embed/YENGTaQZHog?autoplay=1&mute=0&loop=1&playlist=YENGTaQZHog" 
+            allow="autoplay">
+        </iframe>
+    </div>
+
+    <!-- 音樂開關按鈕 -->
+    <button id="music-toggle" class="music-control bg-indigo-600 text-white w-12 h-12 rounded-full shadow-2xl flex items-center justify-center hover:bg-indigo-700 transition-all">
+        <i id="music-icon" class="fas fa-volume-up"></i>
+    </button>
+
+    <!-- 頂部導航欄 -->
+    <header class="sticky top-0 z-50 glass-header">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
                 <div class="flex items-center space-x-3">
-                    <div class="bg-indigo-600 p-2 rounded-lg text-white">
-                        <i class="fas fa-book-open text-xl"></i>
+                    <div class="bg-indigo-600 p-2 rounded-lg text-white shadow-lg shadow-indigo-200">
+                        <i class="fas fa-layer-group text-xl"></i>
                     </div>
-                    <h1 class="text-xl font-bold text-slate-800">數位教案資料庫總覽</h1>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-800 leading-none">教案資料庫</h1>
+                        <p class="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Lesson Plan Management System</p>
+                    </div>
                 </div>
+                
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#" class="text-sm font-medium text-indigo-600 border-b-2 border-indigo-600 pb-1">首頁總覽</a>
+                    <a href="#" class="text-sm font-medium text-slate-600 hover:text-indigo-600 transition">實習督導專區</a>
+                    <a href="#" class="text-sm font-medium text-slate-600 hover:text-indigo-600 transition">資源下載</a>
+                </div>
+
                 <div class="flex items-center space-x-4">
-                    <span class="text-sm text-slate-500 hidden sm:block">督導專用管理介面</span>
-                    <button class="bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-700 transition">
-                        <i class="fas fa-plus mr-1"></i> 新增教案
+                    <button class="bg-indigo-600 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 shadow-md transition-all active:scale-95">
+                        <i class="fas fa-plus mr-2"></i>上傳教案
                     </button>
                 </div>
             </div>
         </div>
-    </nav>
+    </header>
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        <!-- 搜尋與篩選區 -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <div class="relative col-span-1 md:col-span-2">
-                <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400"></i>
-                <input type="text" placeholder="搜尋教案名稱、類型或關鍵字..." 
-                       class="w-full pl-12 pr-4 py-3 rounded-xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm transition">
-            </div>
-            <select class="px-4 py-3 rounded-xl border-none ring-1 ring-slate-200 focus:ring-2 focus:ring-indigo-500 shadow-sm bg-white">
-                <option>所有類型</option>
-                <option>長照專業課程</option>
-                <option>實習督導範例</option>
-                <option>康樂活動設計</option>
-                <option>流行影音參考</option>
-            </select>
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- 狀態統計與歡迎詞 -->
+        <div class="mb-10">
+            <h2 class="text-2xl font-extrabold text-slate-800 mb-2">歡迎回來，督導</h2>
+            <p class="text-slate-500">目前資料庫中共有 <span class="text-indigo-600 font-bold">4</span> 個教案範例，您可以透過搜尋功能快速篩選教材。</p>
         </div>
 
-        <!-- 教案卡片網格 -->
-        <div id="video-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-2 gap-8">
-            <!-- 影片卡片 1 -->
-            <div class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+        <!-- 搜尋與篩選列 -->
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 mb-10 flex flex-col md:flex-row gap-4">
+            <div class="relative flex-grow">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" placeholder="搜尋關鍵字（例如：TWICE、認知訓練、康樂活動...）" 
+                       class="w-full pl-12 pr-4 py-3 bg-slate-50 rounded-xl border-transparent focus:bg-white focus:ring-2 focus:ring-indigo-500 transition-all outline-none">
+            </div>
+            <div class="flex gap-2">
+                <select class="px-4 py-3 bg-slate-50 rounded-xl border-transparent focus:ring-2 focus:ring-indigo-500 outline-none text-sm font-medium">
+                    <option>所有類型</option>
+                    <option>流行影音參考</option>
+                    <option>專業護理課程</option>
+                    <option>社區康樂活動</option>
+                </select>
+                <button class="px-4 py-3 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 教案影片網格 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- 教案卡片 1 -->
+            <article class="lesson-card bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
                 <div class="video-container">
-                    <iframe src="https://www.youtube.com/embed/xWldBK4d2Ps" frameborder="0" allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/xWldBK4d2Ps" title="TWICE-ENEMY" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                 </div>
-                <div class="p-5">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="bg-pink-100 text-pink-700 text-xs font-bold px-2 py-1 rounded">影音參考</span>
-                        <span class="text-slate-400 text-xs"><i class="far fa-calendar-alt mr-1"></i> 2024-12-25</span>
+                <div class="p-6 flex-grow">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="px-3 py-1 bg-pink-50 text-pink-600 text-xs font-bold rounded-full">流行影音參考</span>
+                        <time class="text-xs text-slate-400">更新於 2024.12.25</time>
                     </div>
-                    <h2 class="text-lg font-bold text-slate-800 mb-2">TWICE - ENEMY</h2>
-                    <p class="text-slate-600 text-sm mb-4 line-clamp-2">示範影片描述：可用於長照機構節慶表演參考，節奏感明快，適合設計中高強度健體活動。</p>
-                    <div class="flex items-center justify-between">
-                        <div class="flex -space-x-2">
-                            <div class="w-8 h-8 rounded-full bg-indigo-100 border-2 border-white flex items-center justify-center text-[10px] font-bold">導</div>
-                            <div class="w-8 h-8 rounded-full bg-emerald-100 border-2 border-white flex items-center justify-center text-[10px] font-bold">學</div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3 uppercase">TWICE - ENEMY</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                        可用於長照機構節慶表演參考，節奏感明快。建議用於設計中高強度健體活動，針對年輕實習生進行帶領技巧示範。
+                    </p>
+                    <div class="flex items-center justify-between mt-auto">
+                        <div class="flex items-center -space-x-2">
+                            <span class="w-8 h-8 rounded-full bg-indigo-500 border-2 border-white flex items-center justify-center text-[10px] text-white font-bold" title="督導推薦">督</span>
+                            <span class="w-8 h-8 rounded-full bg-emerald-500 border-2 border-white flex items-center justify-center text-[10px] text-white font-bold" title="實習生必看">學</span>
                         </div>
-                        <button class="text-indigo-600 font-semibold text-sm hover:underline">查看教案詳情</button>
+                        <a href="#" class="text-indigo-600 font-bold text-sm flex items-center hover:translate-x-1 transition-transform">
+                            詳細教案內容 <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                        </a>
                     </div>
                 </div>
-            </div>
+            </article>
 
-            <!-- 影片卡片 2 -->
-            <div class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <!-- 教案卡片 2 -->
+            <article class="lesson-card bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
                 <div class="video-container">
-                    <iframe src="https://www.youtube.com/embed/eHHQaoEW30Q" frameborder="0" allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/eHHQaoEW30Q" title="TWICE-THIS IS FOR" frameborder="0" allowfullscreen></iframe>
                 </div>
-                <div class="p-5">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded">數位教材</span>
-                        <span class="text-slate-400 text-xs"><i class="far fa-calendar-alt mr-1"></i> 2024-12-25</span>
+                <div class="p-6 flex-grow">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="px-3 py-1 bg-indigo-50 text-indigo-600 text-xs font-bold rounded-full">肢體協調訓練</span>
+                        <time class="text-xs text-slate-400">更新於 2024.12.25</time>
                     </div>
-                    <h2 class="text-lg font-bold text-slate-800 mb-2">TWICE - THIS IS FOR</h2>
-                    <p class="text-slate-600 text-sm mb-4 line-clamp-2">本教案著重於節奏與肢體協調訓練，建議由社工或督導帶領實習生進行教學演練。</p>
-                    <div class="flex items-center justify-between">
-                        <div class="flex -space-x-2">
-                            <div class="w-8 h-8 rounded-full bg-blue-100 border-2 border-white flex items-center justify-center text-[10px] font-bold">專</div>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3 uppercase">TWICE - THIS IS FOR</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                        著重於上肢節奏與肢體開發。適合作為站立式團體運動的暖身教材，提供實習生觀摩肢體動作的延伸性與節奏點。
+                    </p>
+                    <div class="flex items-center justify-between mt-auto">
+                        <div class="flex items-center">
+                            <span class="w-8 h-8 rounded-full bg-blue-500 border-2 border-white flex items-center justify-center text-[10px] text-white font-bold" title="專業推薦">專</span>
                         </div>
-                        <button class="text-indigo-600 font-semibold text-sm hover:underline">查看教案詳情</button>
+                        <a href="#" class="text-indigo-600 font-bold text-sm flex items-center hover:translate-x-1 transition-transform">
+                            詳細教案內容 <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                        </a>
                     </div>
                 </div>
-            </div>
+            </article>
 
-            <!-- 影片卡片 3 -->
-            <div class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <!-- 教案卡片 3 -->
+            <article class="lesson-card bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
                 <div class="video-container">
-                    <iframe src="https://www.youtube.com/embed/Sz_wWzgh-vQ" frameborder="0" allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/Sz_wWzgh-vQ" title="TWICE-STRATEGY" frameborder="0" allowfullscreen></iframe>
                 </div>
-                <div class="p-5">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded">策略訓練</span>
-                        <span class="text-slate-400 text-xs"><i class="far fa-calendar-alt mr-1"></i> 2024-12-25</span>
+                <div class="p-6 flex-grow">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="px-3 py-1 bg-purple-50 text-purple-600 text-xs font-bold rounded-full">認知訓練策略</span>
+                        <time class="text-xs text-slate-400">更新於 2024.12.25</time>
                     </div>
-                    <h2 class="text-lg font-bold text-slate-800 mb-2">TWICE - STRATEGY</h2>
-                    <p class="text-slate-600 text-sm mb-4 line-clamp-2">策略性教案範例。透過音樂錄影帶的視覺元素，進行長者認知訓練中的顏色與空間辨識引導。</p>
-                    <div class="flex items-center justify-between">
-                        <button class="text-indigo-600 font-semibold text-sm hover:underline">查看教案詳情</button>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3 uppercase">TWICE - STRATEGY</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                        視覺傳達教案範例。利用 MV 中的鮮豔配色進行色彩辨識與空間記憶引導，適合用於輕度失智症者的認知激勵活動。
+                    </p>
+                    <div class="flex items-center justify-between mt-auto">
+                        <a href="#" class="text-indigo-600 font-bold text-sm flex items-center hover:translate-x-1 transition-transform">
+                            詳細教案內容 <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                        </a>
                     </div>
                 </div>
-            </div>
+            </article>
 
-            <!-- 影片卡片 4 -->
-            <div class="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+            <!-- 教案卡片 4 -->
+            <article class="lesson-card bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
                 <div class="video-container">
-                    <iframe src="https://www.youtube.com/embed/mAKsZ26SabQ" frameborder="0" allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/mAKsZ26SabQ" title="TWICE-YES OR YES" frameborder="0" allowfullscreen></iframe>
                 </div>
-                <div class="p-5">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="bg-amber-100 text-amber-700 text-xs font-bold px-2 py-1 rounded">互動設計</span>
-                        <span class="text-slate-400 text-xs"><i class="far fa-calendar-alt mr-1"></i> 2024-12-25</span>
+                <div class="p-6 flex-grow">
+                    <div class="flex justify-between items-center mb-3">
+                        <span class="px-3 py-1 bg-amber-50 text-amber-600 text-xs font-bold rounded-full">互動設計參考</span>
+                        <time class="text-xs text-slate-400">更新於 2024.12.25</time>
                     </div>
-                    <h2 class="text-lg font-bold text-slate-800 mb-2">TWICE - YES OR YES</h2>
-                    <p class="text-slate-600 text-sm mb-4 line-clamp-2">經典流行樂應用。適合應用於跨代交流活動，縮短實習生與受服務長者間的數位代溝。</p>
-                    <div class="flex items-center justify-between">
-                        <button class="text-indigo-600 font-semibold text-sm hover:underline">查看教案詳情</button>
+                    <h3 class="text-xl font-bold text-slate-800 mb-3 uppercase">TWICE - YES OR YES</h3>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-6">
+                        跨代交流活動範例。透過流行曲目引起實習生興趣，並引導其思考如何轉化成適合長者的「簡化版手語舞」或「坐姿體操」。
+                    </p>
+                    <div class="flex items-center justify-between mt-auto">
+                        <a href="#" class="text-indigo-600 font-bold text-sm flex items-center hover:translate-x-1 transition-transform">
+                            詳細教案內容 <i class="fas fa-arrow-right ml-2 text-xs"></i>
+                        </a>
                     </div>
                 </div>
-            </div>
+            </article>
+
         </div>
     </main>
 
-    <!-- 腳部宣告 -->
-    <footer class="bg-slate-800 text-slate-400 py-8">
-        <div class="max-w-7xl mx-auto px-4 text-center">
-            <p class="text-sm">長照數位教案管理系統 © 2024</p>
-            <p class="text-xs mt-2 text-slate-500">系統建議：適合 1920x1080 螢幕比例，支援 Chrome/Edge 最新版本</p>
+    <!-- 頁尾 -->
+    <footer class="bg-white border-t border-slate-200 mt-20 py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-10">
+                <div class="col-span-1">
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="bg-indigo-600 p-1.5 rounded text-white text-sm">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <span class="font-bold text-slate-800">數位教案資料庫</span>
+                    </div>
+                    <p class="text-sm text-slate-500 leading-relaxed">
+                        致力於長照專業教育與實習指導的數位轉型，提供高品質、可驗證的教學資源，提升長照產業服務品質。
+                    </p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-4">快速連結</h4>
+                    <ul class="space-y-2 text-sm text-slate-500">
+                        <li><a href="#" class="hover:text-indigo-600 transition">關於本計畫</a></li>
+                        <li><a href="#" class="hover:text-indigo-600 transition">督導手冊</a></li>
+                        <li><a href="#" class="hover:text-indigo-600 transition">實習規範下載</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-800 mb-4">系統支援</h4>
+                    <p class="text-sm text-slate-500">若有使用問題或建議新增教案，請聯繫系統管理員。</p>
+                    <div class="mt-4 flex space-x-4">
+                        <i class="fab fa-line text-2xl text-slate-300 hover:text-emerald-500 transition cursor-pointer"></i>
+                        <i class="fas fa-envelope text-2xl text-slate-300 hover:text-indigo-500 transition cursor-pointer"></i>
+                    </div>
+                </div>
+            </div>
+            <div class="pt-8 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-400">© 2024 長照領域數位管理系統 | Designed for Supervisors & Students</p>
+            </div>
         </div>
     </footer>
+
+    <!-- 音樂控制腳本 -->
+    <script>
+        const player = document.getElementById('youtube-bg-player');
+        const musicToggle = document.getElementById('music-toggle');
+        const musicIcon = document.getElementById('music-icon');
+        let isPlaying = true;
+
+        musicToggle.addEventListener('click', () => {
+            if (isPlaying) {
+                // 停止播放 (重新載入不帶 autoplay 的 src 以模擬關閉)
+                player.src = player.src.replace('autoplay=1', 'autoplay=0');
+                musicIcon.className = 'fas fa-volume-mute';
+                musicToggle.classList.remove('bg-indigo-600');
+                musicToggle.classList.add('bg-slate-400');
+            } else {
+                // 開始播放
+                player.src = player.src.replace('autoplay=0', 'autoplay=1');
+                musicIcon.className = 'fas fa-volume-up';
+                musicToggle.classList.remove('bg-slate-400');
+                musicToggle.classList.add('bg-indigo-600');
+            }
+            isPlaying = !isPlaying;
+        });
+    </script>
 
 </body>
 </html>
